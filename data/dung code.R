@@ -1,4 +1,4 @@
-setwd("C:/Users/Michael/Desktop/Dung beetlesProject/data")
+setwd("C:/Users/user/Documents/GitHub/DungBeetles/data")
 dung<-read.csv("dungdata.csv")
 str(dung)
 summary(dung)
@@ -11,6 +11,8 @@ library(multcomp)
 library(plotrix)
 library(lsmeans)
 library(aod)
+
+
 
 ## proportion transformation
 dung$transcc <- asin(sqrt(dung$canopycover/100))
@@ -26,6 +28,8 @@ Tmeans
 # standard deviations
 Tsd <- tapply(dung$vlost, dung$treatment, sd)
 Tsd
+
+
 #now se for all - could be applied later as well
 seC <- 0.06154513/sqrt(32)
 seC
