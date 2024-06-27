@@ -1,8 +1,3 @@
-setwd("C:/Users/user/Documents/GitHub/DungBeetles/data")
-dung<-read.csv("dungdata.csv")
-str(dung)
-summary(dung)
-
 ## packages
 library(ggplot2)
 library(nlme)
@@ -11,42 +6,46 @@ library(multcomp)
 library(plotrix)
 library(lsmeans)
 library(aod)
+library(Rmisc)
 
 
+#### read in the data ####
+setwd("C:/Users/user/Documents/GitHub/DungBeetles/data")
+dung<-read.csv("dungdata.csv")
+str(dung)
+summary(dung)
 
-## proportion transformation
+## proportion transformation for canopy cover
 dung$transcc <- asin(sqrt(dung$canopycover/100))
 
-## first look plots
-par(mfrow=c(1,1))
-plot(vlost ~ canopycover, data=dung)
-plot(vlost ~ transcc, data=dung)
+##########################################################
+#### descriptive statistics ####
+
 
 ## getting means of removal per treatment, roung and plot
-Tmeans <- tapply(dung$vlost, dung$treatment, mean)
-Tmeans
-# standard deviations
-Tsd <- tapply(dung$vlost, dung$treatment, sd)
-Tsd
+summarySE(dung, measurevar="vlost", groupvars=c("treatment"))
+# Control = , fence, plate = 0.238
 
+## how does this vary betweeen the rounds of the experiment?
+summarySE(dung, measurevar="vlost", groupvars=c("treatment", "Round"))
+# looks roughly consistant 
 
-#now se for all - could be applied later as well
-seC <- 0.06154513/sqrt(32)
-seC
-seP <- 0.10265625/sqrt(32)
-seP
-seF <- 0.05500733/sqrt(32)
-seF
-
-Rmeans <- tapply(dung$vlost, dung$Round, mean)
-Rmeans
+## how does this vary between the different locations?
+# use tapply since not all conmbinations are used
 Pmeans <- tapply(dung$vlost, dung$plot.lane, mean)
 Pmeans
 
+####################################################################
 #### PART 1: comparing dung removal in all 3 treatments ####
-## first box plot with all treatments seperate
-plot(vlost ~ treatment, notch=T, data=dung)
-plot(vlost ~ Round, data=dung)
+## first box plot with all treatments separate
+
+## wht does this look like?
+boxplot(vlost ~ treatment, notch=T, data=dung)
+## does seem to be a difference between the control and the two treatments
+
+## does this vary between the rounds?
+boxplot(vlost ~ Round, data=dung)
+## yes but not toomuch or in any clear way
 
 # ggplot
 bp <- ggplot(dung, aes(x = treatment, y = vlost)) +
@@ -254,3 +253,15 @@ cb <- ggplot(allplot, aes(x = data, y = vlost)) +
   coord_cartesian(ylim=c(0, 1))
 cb
 theme(axis.title.x = element_text(vjust=-0.5))
+
+
+
+##################################################################
+#### projections #####
+
+## so we have some numbers about how much dung is removed in a set time frame
+
+## can we therefore project what the ecoysstem service perfomed by these insects is per year?
+## per area?  
+## per elephant?
+
