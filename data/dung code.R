@@ -5,9 +5,11 @@ library(multcomp)
 #library(plotrix)
 #library(lsmeans)
 #library(aod)
+#library(plyr)
 library(Rmisc)
 library(RColorBrewer)
 library(pbkrtest)
+library(emmeans)
 
 #### read in the data ####
 setwd("C:/Users/user/Documents/GitHub/DungBeetles/data")
@@ -79,11 +81,11 @@ summary(model1)
 anova(model1)
 model1
 ## so it looks like there is no interaction or anything to do with canopy cover 
-# Random effects: round = plot.lane = 
+# Random effects account for: round = 20.96%, plot.lane = 14.26% of the residual variance
 
 
 #we'll get proper hypothesis testing from bootstrapping since we have random effects
-### check with bootsrapping
+### check with bootstrapping
 treat3_1.1 <- lmer(vlost ~ 1 + (1 | Round) + (1 | plot.lane), data=dung)
 treat3_2.1 <- lmer(vlost ~ treatment + (1 | Round) + (1 | plot.lane), data=dung)
 treat3_3.1 <- lmer(vlost ~ transcc + (1 | Round) + (1 | plot.lane), data=dung)
@@ -117,11 +119,11 @@ ggplot(dung, aes(x = treatment, y = vlost, fill=treatment)) +
   scale_fill_brewer(palette = 'Dark2')
   scale_x_discrete(name="Treatment", labels=c("Control", "Fence", "Plate"))
 
-## so its clear that the plate and fence treament have less volume lots
+## so its clear that the plate and fence treatment have less volume lots
 
-# our hypothesis would be that this is due to some guilds of dunf beetle beign blocked from acting on the dung
+# our hypothesis would be that this is due to some guilds of dung beetle being blocked from acting on the dung
 
-## but can we show the different betrween the levels statistically?
+## but can we show the different between the levels statistically?
 
 ##testing differences between the three treatments
 # Tukey test
@@ -135,129 +137,108 @@ summary(tuk)
 ## from this we can clearly see that the difference is between the controls nd either the plate or fence treatment
 ## not between those two treatments
 
-### previously I did lsmeans to find the mean when account for rnadom effects
-## as of 2024 this package no lobnger lseems to eb in effect - how to sort?
-### lsmeans from model 3
-lsmeans(model3, "treatment")
+### previously I did lsmeans but this has been replaced by emmeans
+em_mean_treat = emmeans(model1, ~ treatment | transcc)
+em_mean_treat
 
+# plot
+plot(em_mean_treat, comparisons = T)
 
 
 #### PART 2: comparing dung removal in control and the combined treatments ####
 ## combining levels
-#library(plyr)
-#df2 <- data.frame(dung$Round, dung$plot, dung$treatment, dung$vlost)
-#adder <- function(x){
-#  x[x$dung.treatment == "fence",]$dung.vlost <- x[x$dung.treatment == "fence",]$dung.vlost + x[x$dung.treatment == "plate",]$dung.vlost
-#  x <- x[!x$dung.treatment == "plate",]
-#  levels(x$dung.treatment) <- droplevels(x$dung.treatment)
-#  levels(x$dung.treatment) <- c("control", "combined")
-#  return(data.frame(x$dung.treatment, x$dung.vlost))
-#}
-#
-#df3 <- ddply(df2, "dung.plot", adder)
-## problems with this - new data set that does the same thing
+# since the control is much higher than the two treatments we want to see if the volume
+# lost there is much different from when we add the two treatments together
+
+
+## this is included in the dataet 'F+P.csv'
 comb <- read.csv("F+P.csv")
 summary(comb)
 str(comb)
 
-# clean data set to remove the outliers
+# have a look
+hist(comb$vlost)
+
+# some large outliers where we think things were disripted by guinea fowl
 ccomb = comb[which(comb$vlost < 0.7),] 
 
 ## mean F+P vlost
-FPmeans <- tapply(ccomb$vlost, ccomb$treatment, mean)
-FPmeans
+summarySE(ccomb, measurevar="vlost", groupvars=c("treatment"))
+## looks very similar now - possibly no difference
 
-#sd and se
-FPsd <- tapply(ccomb$vlost, ccomb$treatment, sd)
-FPsd
-FPse <- 0.07716976/sqrt(29)
-FPse
+## build a linear mixed model similar to before where we look at the volume lost per treatment
+# these won't include the canopy cover since it was impossible to include this when combing measures
+# unless we took an average soe not sure this is best
 
-## second box plot with fence and plate merged
-par(mfrow=c(1,1))
-plot(vlost ~ treatment, notch=T, data=ccomb)
-# ggplot stuffs
-qplot(treatment, vlost, data=ccomb, notch=T, geom="boxplot")
-bp2 <- ggplot(ccomb, aes(x = treatment, y = vlost)) +
+comb_model <- lmer(vlost ~ treatment + (1|Round) + (1|plot.lane), data=ccomb)
+#plot
+res<- resid(comb_model)
+ran <- ranef(comb_model)
+fit <- fitted(comb_model)
+par(mfrow=c(1,4))
+hist(ran$Round[,1])
+hist(ran$plot.lane[,1])
+plot(res ~ combfit)
+qqnorm(res, main='')
+qqline(res)
+# looks ok - now have a look
+summary(comb_model)
+anova(comb_model)
+comb_model
+# Random effects account for: round = 11.3%, plot.lane = 17.66% of the residual variance
+
+
+# doesn't look like there is a difference between treatments this time
+## check with bootstrapping
+#we'll get proper hypothesis testing from bootstrapping since we have random effects
+### check with bootstrapping
+treat2_1.1 <- lmer(vlost ~ 1 + (1 | Round) + (1 | plot.lane), data=ccomb)
+treat2_2.1 <- lmer(vlost ~ treatment + (1|Round) + (1|plot.lane), data=ccomb)
+#treatment
+treat_test_comb <- PBmodcomp(treat2_2.1, treat2_1.1)
+treat_test_comb
+# p = 0.6811
+
+## Combining the plate and the fence results in a similar volume of dung lost by each pile than when neither are present
+## indicates that the guilds could be salutatory and that dung removed by one isn't utilised by the other
+## if this was the case then the volume of dung lost would have been higehr than in the control
+
+
+## Now plot this to illustrate this result
+
+# PLOT
+ggplot(ccomb, aes(x = treatment, y = vlost, fill=treatment)) +
   theme_bw() + geom_boxplot() +
   scale_y_continuous(name="Volume of Dung Removed (L)") +
   theme(axis.title.y = element_text(face="bold", size=18), 
         axis.title.x = element_text(face= "bold", size=18), 
         axis.text.x=element_text(size=15), 
-        axis.text.y=element_text(size=15))
-theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(), 
-      panel.background=element_blank(), axis.line=element_line(colour="black"))
-bp2 
-bp2 + scale_x_discrete(breaks=c("control", "F+P"), labels=c("control", "combined"))
+        axis.text.y=element_text(size=15))+
+  theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(), 
+      panel.background=element_blank(), axis.line=element_line(colour="black"))+
+  scale_color_manual(values = c("#1B9E77", "#E7298A"))+ # these aren't being registered at the moment
+  scale_x_discrete(breaks=c("control", "F+P"), labels=c("Control", "Combined"))
+  
+#### finally to create the combined plot with all four included.
 
-
-### MODELS!!!
-## already know that mixed models are need and to remove cc
-## so straight on with the similar models
-
-model4 <- lmer(vlost ~ treatment + (1|Round) + (1|plot.lane),
-               data=ccomb)
-summary(model4)
-anova(model4)
-
-## appears to be no effect of treatment so additive effect on vlost
-## confidence intervals
-confint(model4, method="Wald")
-
-## lsmeans
-lsmeans(model4, "treatment")
-
-wald.test(b=fixef(model4), Sigma=vcov(model4), Terms = 2, df=39)
-
-##testing differences between the three treatments
-# Tukey test
-combMCP <- mcp(treatment = 'Tukey')
-combtuk <- glht(model4, combMCP)
-confint(combtuk)
-plot(combtuk)
-
-## finally lets chekc the model to ake sure its not rubbish
-combres<- resid(model4)
-combran <- ranef(model4)
-combfit <- fitted(model4)
-par(mfrow=c(1,4))
-hist(combran$Round[,1])
-hist(combran$plot.lane[,1])
-plot(combres ~ combfit)
-qqnorm(combres, main='')
-qqline(combres)
-## although not great we have deleted 1/3 fo the data and it not too bad
-### analysis done!!
-
-
-#### fimally to create the combined plot for the paper
+# again I've doen this with excel - should write a proper method in plyr for this and above
 allplot <- read.csv("combined plot.csv")
-str(allplot)
 
 data = factor(allplot$treatment, c("fence", "plate", "combined", "control"))
 
-cb <- ggplot(allplot, aes(x = data, y = vlost)) +
+ ggplot(allplot, aes(x = data, y = vlost, fill=data)) +
   theme_bw() + geom_boxplot() +
   scale_y_continuous(name="Volume of dung removed (Litres)") +
   theme(axis.title.y = element_text(face="bold", size=20), 
-        axis.title.x = element_text(face="bold", size=20), 
+        axis.title.x = element_text(face="bold", size=20, vjust=-0.5), 
         axis.text.x=element_text(size=18), 
         axis.text.y=element_text(size=18)) + 
   theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(), 
         panel.background=element_blank(), axis.line=element_line(colour="black")) + 
+   scale_fill_brewer(palette = 'Dark2')+ # this should be reordered and why are controls blanck?
   scale_x_discrete(name="Treatment", labels=c("Fence", "Plate", "Combined", "Control")) + 
   coord_cartesian(ylim=c(0, 1))
-cb
-theme(axis.title.x = element_text(vjust=-0.5))
 
+### Done
 
-
-##################################################################
-#### projections #####
-
-## so we have some numbers about how much dung is removed in a set time frame
-
-## can we therefore project what the ecoysstem service perfomed by these insects is per year?
-## per area?  
-## per elephant?
-
+## look at projections in another script
