@@ -116,7 +116,7 @@ ggplot(dung, aes(x = treatment, y = vlost, fill=treatment)) +
         axis.text.y=element_text(size=15)) + 
   theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(), 
         panel.background=element_blank(), axis.line=element_line(colour="black"))+
-  scale_fill_brewer(palette = 'Dark2')
+  scale_fill_brewer(palette = 'Dark2')+
   scale_x_discrete(name="Treatment", labels=c("Control", "Fence", "Plate"))
 
 ## so its clear that the plate and fence treatment have less volume lots
@@ -205,39 +205,43 @@ treat_test_comb
 
 
 ## Now plot this to illustrate this result
-
 # PLOT
-ggplot(ccomb, aes(x = treatment, y = vlost, fill=treatment)) +
-  theme_bw() + geom_boxplot() +
-  scale_y_continuous(name="Volume of Dung Removed (L)") +
+ggplot(ccomb, aes(x = treatment, y = vlost, fill=treatment))+
+  theme_bw() + geom_boxplot()+
+  scale_y_continuous(name="Volume of Dung Removed (L)")+
+  scale_x_discrete(name="Treatment", breaks=c("control", "F+P"), labels=c("Control", "Combined"))+
   theme(axis.title.y = element_text(face="bold", size=18), 
         axis.title.x = element_text(face= "bold", size=18), 
         axis.text.x=element_text(size=15), 
         axis.text.y=element_text(size=15))+
+  scale_fill_manual(values=c("#1B9E77", "#E7298A"))+
   theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(), 
-      panel.background=element_blank(), axis.line=element_line(colour="black"))+
-  scale_color_manual(values = c("#1B9E77", "#E7298A"))+ # these aren't being registered at the moment
-  scale_x_discrete(breaks=c("control", "F+P"), labels=c("Control", "Combined"))
+        panel.background=element_blank(), axis.line=element_line(colour="black"))
   
+
 #### finally to create the combined plot with all four included.
 
-# again I've doen this with excel - should write a proper method in plyr for this and above
+# again I've done this with excel - should write a proper method in plyr for this and above
 allplot <- read.csv("combined plot.csv")
+str(allplot)
+allplot
 
-data = factor(allplot$treatment, c("fence", "plate", "combined", "control"))
+# take out disrupted volumes
+allplot = allplot[which(allplot$vlost < 0.7),] 
 
- ggplot(allplot, aes(x = data, y = vlost, fill=data)) +
+# colours need to be re-ordered to be consistent
+ggplot(allplot, aes(x = treatment, y = vlost, fill=treatment))+
   theme_bw() + geom_boxplot() +
-  scale_y_continuous(name="Volume of dung removed (Litres)") +
+  scale_y_continuous(name="Volume of dung removed (L)")+
   theme(axis.title.y = element_text(face="bold", size=20), 
         axis.title.x = element_text(face="bold", size=20, vjust=-0.5), 
         axis.text.x=element_text(size=18), 
         axis.text.y=element_text(size=18)) + 
   theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(), 
-        panel.background=element_blank(), axis.line=element_line(colour="black")) + 
-   scale_fill_brewer(palette = 'Dark2')+ # this should be reordered and why are controls blanck?
-  scale_x_discrete(name="Treatment", labels=c("Fence", "Plate", "Combined", "Control")) + 
-  coord_cartesian(ylim=c(0, 1))
+        panel.background=element_blank(), axis.line=element_line(colour="black"))+ 
+  scale_fill_manual(values=c("#1B9E77", "#E7298A", "#D95F02", "#7570B3"))+
+   scale_x_discrete(name="Treatment", labels=c("Control", "Fence + Plate", "Fence", "Plate"))
+
 
 ### Done
 
